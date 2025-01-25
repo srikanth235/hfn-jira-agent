@@ -1,5 +1,5 @@
 <a href="https://hfn-jira-agent.vercel.app/">
-<img src="https://github.com/heartfulness-ai/hfn-jira-agent/blob/main/public/images/chat-screenshot.png" alt="Heartfulness Jira Agent" />
+<img src="https://github.com/srikanth235/hfn-jira-agent/blob/main/public/images/chat-screenshot.png" alt="Heartfulness Jira Agent" />
 
   <h1 align="center">Heartfulness Jira Agent</h1>
 </a>
