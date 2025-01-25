@@ -49,6 +49,8 @@ const jiraTools: AllowedTools[] = ['searchJiraTickets'];
 const allTools: AllowedTools[] = [...blocksTools, ...weatherTools, ...jiraTools];
 
 export async function POST(request: Request) {
+  const start = performance.now();
+
   const {
     id,
     messages,
@@ -142,6 +144,10 @@ export async function POST(request: Request) {
                   },
                 ),
               });
+
+              const end = performance.now();
+              console.log(`Chat response time: ${end - start}ms`);
+
             } catch (error) {
               console.error('Failed to save chat');
             }
