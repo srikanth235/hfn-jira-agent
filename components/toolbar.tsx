@@ -32,7 +32,6 @@ import {
   LogsIcon,
   MessageIcon,
   PenIcon,
-  SparklesIcon,
   StopIcon,
   SummarizeIcon,
 } from './icons';
