@@ -1,5 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
-import * as use from '@tensorflow-models/universal-sentence-encoder';
+import { openai } from '@ai-sdk/openai';
+import { embedMany } from 'ai';
 import { JiraTicket } from './search-jira-tickets';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -84,12 +85,12 @@ export async function getPrecomputedEmbeddings() {
 
     // If not found in file, compute and save
     if (!precomputedTicketEmbeddings) {
-      const model = await use.load();
       const tickets = loadTickets();
-      // Use all relevant fields for embedding
-      precomputedTicketEmbeddings = await model.embed(
-        tickets.map(ticket => getTicketText(ticket))
-      ) as unknown as tf.Tensor2D;
+      const { embeddings } = await embedMany({
+        model: openai.embedding('text-embedding-3-small'),
+        values: tickets.map(ticket => getTicketText(ticket)),
+      });
+      precomputedTicketEmbeddings = tf.tensor2d(embeddings);
       await saveEmbeddingsToFile(precomputedTicketEmbeddings);
     }
   }

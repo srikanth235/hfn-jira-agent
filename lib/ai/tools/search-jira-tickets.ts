@@ -1,8 +1,9 @@
 import { CoreTool } from 'ai';
 import { z } from 'zod';
 import * as tf from '@tensorflow/tfjs';
-import * as use from '@tensorflow-models/universal-sentence-encoder';
 import { getPrecomputedEmbeddings } from './ticket-embeddings';
+import { openai } from '@ai-sdk/openai';
+import { embed } from 'ai';
 
 
 const jiraSearchSchema = z.object({
@@ -20,16 +21,6 @@ export interface JiraTicket {
   department?: string; // maps to "Department"
   location?: string;   // maps to "Location"
   priority?: string;   // maps to "Priority"
-}
-
-// Add model caching at module level
-let modelPromise: Promise<use.UniversalSentenceEncoder> | null = null;
-
-function getModel() {
-  if (!modelPromise) {
-    modelPromise = use.load();
-  }
-  return modelPromise;
 }
 
 function cosineSimilarity(a: tf.Tensor, b: tf.Tensor): number {
@@ -87,28 +78,34 @@ export function searchJiraTickets({ session }: { session: any }): CoreTool<typeo
 
       try {
         if (!process.env.JIRA_API_ENDPOINT) {
-          // Load tickets from file instead of using dummy data
           const embeddingStartTime = performance.now();
-          const [tickets, ticketEmbeddings, model] = await Promise.all([
+          const [tickets, ticketEmbeddings] = await Promise.all([
             loadTickets(),
             getPrecomputedEmbeddings(),
-            getModel()
           ]);
-          const queryEmbedding = await model.embed([args.query]);
-          const embeddingEndTime = performance.now();
 
-          // Generate embedding for the query
-          const queryEmbeddingArray = queryEmbedding.arraySync()[0];
-          const similarities = ticketEmbeddings.arraySync().map((embedding: number[]) =>
-            cosineSimilarity(tf.tensor(embedding), tf.tensor(queryEmbeddingArray))
-          );
+          // Generate embedding for the query using OpenAI
+          const { embedding: queryEmbedding } = await embed({
+            model: openai.embedding('text-embedding-3-small'),
+            value: args.query,
+          });
+
+          // Calculate similarities using tf.tidy
+          const similarities = tf.tidy(() => {
+            const queryTensor = tf.tensor2d([queryEmbedding]);
+            return ticketEmbeddings.arraySync().map((embedding: number[]) =>
+              cosineSimilarity(tf.tensor(embedding), queryTensor.squeeze())
+            );
+          });
+
+          const embeddingEndTime = performance.now();
 
           // Sort tickets by similarity score and filter by threshold
           const ticketsWithScores = tickets
             .map((ticket, index) => ({ ticket, similarity: similarities[index] }))
-            .filter(item => item.similarity != null && !isNaN(item.similarity)) // Filter out invalid similarities
+            .filter(item => item.similarity != null && !isNaN(item.similarity))
             .sort((a, b) => b.similarity - a.similarity)
-            .slice(0, 5); // Limit to 5 results
+            .slice(0, 5);
 
           console.log('Tickets with similarity scores:', ticketsWithScores.map(({ ticket, similarity }) => ({
             id: ticket.id,
