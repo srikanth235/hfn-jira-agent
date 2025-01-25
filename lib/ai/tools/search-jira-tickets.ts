@@ -105,7 +105,7 @@ export function searchJiraTickets({ session }: { session: any }): CoreTool<typeo
             .map((ticket, index) => ({ ticket, similarity: similarities[index] }))
             .filter(item => item.similarity != null && !isNaN(item.similarity))
             .sort((a, b) => b.similarity - a.similarity)
-            .slice(0, 5);
+            .slice(0, 10);
 
           result = ticketsWithScores.map(item => item.ticket);
 
