@@ -107,12 +107,6 @@ export function searchJiraTickets({ session }: { session: any }): CoreTool<typeo
             .sort((a, b) => b.similarity - a.similarity)
             .slice(0, 5);
 
-          console.log('Tickets with similarity scores:', ticketsWithScores.map(({ ticket, similarity }) => ({
-            id: ticket.id,
-            title: ticket.title,
-            similarity: similarity ? similarity.toFixed(4) : 'N/A'
-          })));
-
           result = ticketsWithScores.map(item => item.ticket);
 
           console.log({

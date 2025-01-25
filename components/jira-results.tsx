@@ -46,7 +46,7 @@ export function JiraResults({ tickets, isLoading, sources }: JiraResultsProps) {
             href={ticket.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="relative flex flex-col min-w-[200px] p-3 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            className="relative flex flex-col min-w-[200px] p-3 bg-gray-100 dark:bg-muted rounded-lg hover:bg-gray-50 dark:hover:bg-muted/80 transition"
           >
             <div className="absolute top-3 right-3">
               <ExternalLinkIcon size={16} className="text-gray-500 dark:text-gray-400" />
