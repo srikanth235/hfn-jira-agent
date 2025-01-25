@@ -3,27 +3,7 @@ import * as use from '@tensorflow-models/universal-sentence-encoder';
 import { JiraTicket } from './search-jira-tickets';
 import * as fs from 'fs';
 import * as path from 'path';
-
-const DUMMY_TICKETS: JiraTicket[] = [
-  {
-    id: 'PROJ-123',
-    title: 'Login page crashes on mobile devices',
-    url: 'https://example.atlassian.net/browse/PROJ-123',
-    resolution: 'Fixed',
-  },
-  {
-    id: 'PROJ-456',
-    title: 'Performance issues with data loading',
-    url: 'https://example.atlassian.net/browse/PROJ-456',
-    resolution: 'Done',
-  },
-  {
-    id: 'PROJ-789',
-    title: 'UI inconsistencies in dark mode',
-    url: 'https://example.atlassian.net/browse/PROJ-789',
-    resolution: 'Complete',
-  },
-];
+import ticketData from './jira_tickets.json';
 
 const EMBEDDINGS_FILE_PATH = path.join(
   process.env.HOME || process.env.USERPROFILE || '',
@@ -31,6 +11,24 @@ const EMBEDDINGS_FILE_PATH = path.join(
 );
 
 let precomputedTicketEmbeddings: tf.Tensor2D | null = null;
+let cachedTickets: JiraTicket[] | null = null;
+
+function loadTickets(): JiraTicket[] {
+  if (!cachedTickets) {
+    cachedTickets = ticketData.map(ticket => ({
+      id: ticket['Issue key'],
+      title: ticket['Summary'],
+      description: ticket['Description'],
+      department: ticket['Department'],
+      location: ticket['Location'],
+      resolution: ticket['Status'],
+      url: `https://jira.example.com/browse/${ticket['Issue key']}`,
+      created: ticket['Created'],
+      updated: ticket['Updated']
+    }));
+  }
+  return cachedTickets;
+}
 
 async function saveEmbeddingsToFile(embeddings: tf.Tensor2D) {
   try {
@@ -87,9 +85,10 @@ export async function getPrecomputedEmbeddings() {
     // If not found in file, compute and save
     if (!precomputedTicketEmbeddings) {
       const model = await use.load();
+      const tickets = loadTickets();
       // Use all relevant fields for embedding
       precomputedTicketEmbeddings = await model.embed(
-        DUMMY_TICKETS.map(ticket => getTicketText(ticket))
+        tickets.map(ticket => getTicketText(ticket))
       ) as unknown as tf.Tensor2D;
       await saveEmbeddingsToFile(precomputedTicketEmbeddings);
     }
