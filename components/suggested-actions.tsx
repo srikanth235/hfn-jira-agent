@@ -16,24 +16,24 @@ interface SuggestedActionsProps {
 function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
   const suggestedActions = [
     {
-      title: 'What are the advantages',
-      label: 'of using Next.js?',
-      action: 'What are the advantages of using Next.js?',
+      title: 'Analyze connectivity',
+      label: 'patterns and outages',
+      action: 'What are the most common network connectivity problems and their locations? Show me any patterns in internet or LAN issues.',
     },
     {
-      title: 'Write code to',
-      label: `demonstrate djikstra's algorithm`,
-      action: `Write code to demonstrate djikstra's algorithm`,
+      title: 'Analyze hardware issues',
+      label: 'in the Admin Building',
+      action: 'What are the most common hardware issues reported in the Admin Building location?',
     },
     {
-      title: 'Help me write an essay',
-      label: `about silicon valley`,
-      action: `Help me write an essay about silicon valley`,
+      title: 'Infrastructure status',
+      label: 'CCTV and Biometric systems',
+      action: 'What is the current health status of our CCTV and biometric systems? Show me any recurring problems.',
     },
     {
-      title: 'What is the weather',
-      label: 'in San Francisco?',
-      action: 'What is the weather in San Francisco?',
+      title: 'System performance',
+      label: 'across departments',
+      action: 'Which departments are experiencing the most system performance issues? What are the common problems?',
     },
   ];
 
