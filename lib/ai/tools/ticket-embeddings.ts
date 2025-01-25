@@ -2,14 +2,8 @@ import * as tf from '@tensorflow/tfjs';
 import { openai } from '@ai-sdk/openai';
 import { embedMany } from 'ai';
 import { JiraTicket } from './search-jira-tickets';
-import * as fs from 'fs';
-import * as path from 'path';
+import { put, list } from '@vercel/blob';
 import ticketData from './jira_tickets.json';
-
-const EMBEDDINGS_FILE_PATH = path.join(
-  process.env.HOME || process.env.USERPROFILE || '',
-  'ticket-embeddings.json'
-);
 
 let precomputedTicketEmbeddings: tf.Tensor2D | null = null;
 let cachedTickets: JiraTicket[] | null = null;
@@ -31,39 +25,36 @@ function loadTickets(): JiraTicket[] {
   return cachedTickets;
 }
 
-async function saveEmbeddingsToFile(embeddings: tf.Tensor2D) {
+async function storeEmbeddingsInBlob(embeddings: tf.Tensor2D) {
   try {
-    const embeddingsDir = path.dirname(EMBEDDINGS_FILE_PATH);
-
-    // Check if directory exists before creating
-    try {
-      await fs.promises.access(embeddingsDir);
-      console.log('Directory already exists:', embeddingsDir);
-    } catch {
-      console.log('Creating directory:', embeddingsDir);
-      await fs.promises.mkdir(embeddingsDir, { recursive: true });
-    }
-
     const embeddingsArray = await embeddings.array();
-    console.log('Writing embeddings to:', EMBEDDINGS_FILE_PATH);
-    await fs.promises.writeFile(EMBEDDINGS_FILE_PATH, JSON.stringify(embeddingsArray));
-    console.log('Successfully saved embeddings');
+    const { url } = await put('ticket-embeddings.json', JSON.stringify(embeddingsArray), {
+      access: 'public',
+      addRandomSuffix: false
+    });
+    console.log('Successfully saved embeddings to Blob:', url);
   } catch (error) {
-    console.error('Failed to save embeddings:', error);
+    console.error('Failed to save embeddings to Blob:', error);
     throw error;
   }
 }
 
-async function loadEmbeddingsFromFile(): Promise<tf.Tensor2D | null> {
+async function loadEmbeddingsFromBlob(): Promise<tf.Tensor2D | null> {
   try {
-    console.log('Attempting to load embeddings from:', EMBEDDINGS_FILE_PATH);
-    await fs.promises.access(EMBEDDINGS_FILE_PATH);
-    const data = await fs.promises.readFile(EMBEDDINGS_FILE_PATH, 'utf8');
-    console.log('Successfully loaded embeddings file');
-    const embeddingsArray = JSON.parse(data);
+    const { blobs } = await list();
+    const embeddingBlob = blobs.find(blob => blob.pathname === 'ticket-embeddings.json');
+
+    if (!embeddingBlob) {
+      console.log('No embeddings found in Blob storage');
+      return null;
+    }
+
+    console.log('Loading embeddings from Blob:', embeddingBlob.url);
+    const response = await fetch(embeddingBlob.url);
+    const embeddingsArray = await response.json();
     return tf.tensor2d(embeddingsArray);
   } catch (error) {
-    console.error('Error loading embeddings:', error);
+    console.error('Error loading embeddings from Blob:', error);
     return null;
   }
 }
@@ -80,10 +71,10 @@ function getTicketText(ticket: JiraTicket): string {
 
 export async function getPrecomputedEmbeddings() {
   if (!precomputedTicketEmbeddings) {
-    // Try to load from file first
-    precomputedTicketEmbeddings = await loadEmbeddingsFromFile();
+    // Try to load from Blob storage first
+    precomputedTicketEmbeddings = await loadEmbeddingsFromBlob();
 
-    // If not found in file, compute and save
+    // If not found in Blob storage, compute and save
     if (!precomputedTicketEmbeddings) {
       const tickets = loadTickets();
       const { embeddings } = await embedMany({
@@ -91,7 +82,7 @@ export async function getPrecomputedEmbeddings() {
         values: tickets.map(ticket => getTicketText(ticket)),
       });
       precomputedTicketEmbeddings = tf.tensor2d(embeddings);
-      await saveEmbeddingsToFile(precomputedTicketEmbeddings);
+      await storeEmbeddingsInBlob(precomputedTicketEmbeddings);
     }
   }
   return precomputedTicketEmbeddings;
